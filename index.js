@@ -9,6 +9,21 @@ function run(cmd) {
 }
 
 /* -------------------------
+   ESC CANCEL GLOBAL
+------------------------- */
+
+process.stdin.setRawMode?.(true);
+process.stdin.resume();
+process.stdin.setEncoding("utf8");
+
+process.stdin.on("data", (key) => {
+  if (key === "\u001b") {
+    console.log(pc.red("\nCancelled (ESC pressed)"));
+    process.exit(0);
+  }
+});
+
+/* -------------------------
    git state
 ------------------------- */
 
@@ -43,7 +58,7 @@ function hasConflicts(files) {
 function banner() {
   console.clear();
   console.log("");
-  console.log(pc.bold("STAGEFLOW (SAFE MODE)"));
+  console.log(pc.bold("STAGEFLOW"));
   console.log("");
 }
 
@@ -102,14 +117,12 @@ async function commitFlow() {
       run("git reset");
       console.log(pc.red("Staging area cleared."));
     }
-    console.log('staged', staged)
+
     if (action === "continue") {
       const stagedSet = new Set(staged);
 
-      // IMPORTANT FIX: remove staged files BEFORE checkbox UI
       selectableFiles = files.filter(line => {
-        const file = line.split(" ").slice(1).join(" ").trim()
-        console.log('line', line)
+        const file = line.split(" ").slice(1).join(" ").trim();
         return !stagedSet.has(file);
       });
     }
@@ -117,13 +130,12 @@ async function commitFlow() {
 
   console.log(pc.dim(`Files detected: ${selectableFiles.length}`));
   console.log("");
-  console.log(selectableFiles)
 
   const selected = await checkbox({
     message: "Select files to stage",
     choices: selectableFiles.map(line => ({
       name: formatFile(line),
-      value: line.split(" ").slice(1).join(" "),
+      value: line.split(" ").slice(1).join(" ").trim(),
       checked: true
     }))
   });
