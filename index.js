@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from "child_process";
-import { checkbox } from "@inquirer/prompts";
+import { checkbox, select } from "@inquirer/prompts";
 import pc from "picocolors";
 
 function run(cmd) {
@@ -9,27 +9,19 @@ function run(cmd) {
 }
 
 /* -------------------------
-   precheck
-------------------------- */
-
-function hasAicommit2() {
-  try {
-    execSync("command -v aicommit2", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/* -------------------------
-   git
+   git state
 ------------------------- */
 
 function getFiles() {
   const out = execSync("git status --porcelain -z", { encoding: "utf8" });
   if (!out) return [];
+  return out.split("\0").filter(Boolean).map(s => s.trim());
+}
 
-  return out.split("\0").filter(Boolean).map(v => v.trim());
+function getStagedFiles() {
+  const out = execSync("git diff --cached --name-only", { encoding: "utf8" }).trim();
+  if (!out) return [];
+  return out.split("\n").filter(Boolean);
 }
 
 function hasConflicts(files) {
@@ -50,9 +42,8 @@ function hasConflicts(files) {
 
 function banner() {
   console.clear();
-
   console.log("");
-  console.log(pc.bold("STAGEFLOW"));
+  console.log(pc.bold("STAGEFLOW (SAFE MODE)"));
   console.log("");
 }
 
@@ -60,8 +51,7 @@ function formatFile(line) {
   if (line.startsWith("??")) return pc.yellow(line);
   if (line.startsWith("A")) return pc.green(line);
   if (line.startsWith("M")) return pc.blue(line);
-  if (line.startsWith("T")) return pc.blue(line);
-  if (line.startsWith("D")) return pc.gray(line);
+  if (line.startsWith("D")) return pc.red(line);
   if (line.startsWith("R")) return pc.magenta(line);
   if (line.startsWith("C")) return pc.cyan(line);
   if (line.startsWith("U")) return pc.red(line);
@@ -69,15 +59,10 @@ function formatFile(line) {
 }
 
 /* -------------------------
-   commit flow
+   flow
 ------------------------- */
 
 async function commitFlow() {
-  if (!hasAicommit2()) {
-    console.error(pc.red("ERROR: aicommit2 not found in PATH"));
-    process.exit(1);
-  }
-
   const files = getFiles();
 
   if (hasConflicts(files)) {
@@ -91,12 +76,52 @@ async function commitFlow() {
     return;
   }
 
-  console.log(pc.dim(`Files detected: ${files.length}`));
+  const staged = getStagedFiles();
+
+  let selectableFiles = files;
+
+  if (staged.length > 0) {
+    console.log(pc.yellow("Staged files detected:"));
+    console.log("");
+
+    for (const f of staged) {
+      console.log(pc.cyan(`- ${f}`));
+    }
+
+    console.log("");
+
+    const action = await select({
+      message: "What do you want to do?",
+      choices: [
+        { name: "Continue (exclude staged files)", value: "continue" },
+        { name: "Reset staging area", value: "reset" }
+      ]
+    });
+
+    if (action === "reset") {
+      run("git reset");
+      console.log(pc.red("Staging area cleared."));
+    }
+    console.log('staged', staged)
+    if (action === "continue") {
+      const stagedSet = new Set(staged);
+
+      // IMPORTANT FIX: remove staged files BEFORE checkbox UI
+      selectableFiles = files.filter(line => {
+        const file = line.split(" ").slice(1).join(" ").trim()
+        console.log('line', line)
+        return !stagedSet.has(file);
+      });
+    }
+  }
+
+  console.log(pc.dim(`Files detected: ${selectableFiles.length}`));
   console.log("");
+  console.log(selectableFiles)
 
   const selected = await checkbox({
-    message: "Select files",
-    choices: files.map(line => ({
+    message: "Select files to stage",
+    choices: selectableFiles.map(line => ({
       name: formatFile(line),
       value: line.split(" ").slice(1).join(" "),
       checked: true
@@ -107,8 +132,6 @@ async function commitFlow() {
     console.log(pc.yellow("Nothing selected."));
     return;
   }
-
-  run("git reset");
 
   for (const file of selected) {
     console.log(pc.dim(`Staging: ${file}`));
