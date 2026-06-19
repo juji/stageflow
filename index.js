@@ -13,11 +13,22 @@ function run(cmd) {
 ------------------------- */
 
 function getFiles() {
-  const out = run("git status --porcelain");
-
+  const out = execSync("git status --porcelain -z", { encoding: "utf8" });
   if (!out) return [];
 
-  return out.split("\n").map(line => line.trim());
+  return out.split("\0").filter(Boolean).map(v => v.trim());
+}
+
+function hasConflicts(files) {
+  return files.some(line => 
+    line.startsWith("U") ||
+    line.startsWith("AA") ||
+    line.startsWith("AU") ||
+    line.startsWith("UA") ||
+    line.startsWith("DD") ||
+    line.startsWith("DU") ||
+    line.startsWith("UD")
+  );
 }
 
 /* -------------------------
@@ -33,22 +44,14 @@ function banner() {
 }
 
 function formatFile(line) {
-  if (line.startsWith("??")) {
-    return pc.yellow(line);
-  }
-
-  if (line.startsWith("A")) {
-    return pc.green(line);
-  }
-
-  if (line.startsWith("M")) {
-    return pc.blue(line);
-  }
-
-  if (line.startsWith("D")) {
-    return pc.red(line);
-  }
-
+  if (line.startsWith("??")) return pc.yellow(line);
+  if (line.startsWith("A")) return pc.green(line);
+  if (line.startsWith("M")) return pc.blue(line);
+  if (line.startsWith("T")) return pc.blue(line);
+  if (line.startsWith("D")) return pc.gray(line);
+  if (line.startsWith("R")) return pc.magenta(line);
+  if (line.startsWith("C")) return pc.cyan(line);
+  if (line.startsWith("U")) return pc.red(line);
   return line;
 }
 
@@ -58,6 +61,12 @@ function formatFile(line) {
 
 async function commitFlow() {
   const files = getFiles();
+
+  if (hasConflicts(files)) {
+    console.error(pc.red("ERROR: Merge conflict detected (U state)."));
+    console.error(pc.red("Resolve conflicts before continuing."));
+    process.exit(1);
+  }
 
   if (!files.length) {
     console.log(pc.green("Working tree clean."));
@@ -82,7 +91,6 @@ async function commitFlow() {
   }
 
   run("git reset");
-  console.log(selected)
 
   for (const file of selected) {
     console.log(pc.dim(`Staging: ${file}`));
