@@ -4,91 +4,107 @@ import { execSync } from "child_process";
 import { checkbox } from "@inquirer/prompts";
 import pc from "picocolors";
 
-/* -------------------------
-   utils
-------------------------- */
-
 function run(cmd) {
   return execSync(cmd, { encoding: "utf8" }).trim();
 }
 
 /* -------------------------
-   git state
+   git
 ------------------------- */
 
 function getFiles() {
   const out = run("git status --porcelain");
+
   if (!out) return [];
 
-  return out.split("\n").map(line => ({
-    status: line.slice(0, 2),
-    file: line.slice(3)
-  }));
+  return out.split("\n").map(line => line.trim());
 }
 
 /* -------------------------
-   banner (NO STYLE, NO LINES, NO BOX)
+   ui
 ------------------------- */
 
-function banner(filesCount) {
+function banner() {
   console.clear();
 
-  console.log(pc.cyan("STAGEFLOW"));
-  console.log();
-  console.log(`${filesCount} files detected`);
-  console.log();
+  console.log("");
+  console.log(pc.bold("STAGEFLOW"));
+  console.log("");
+}
+
+function formatFile(line) {
+  if (line.startsWith("??")) {
+    return pc.yellow(line);
+  }
+
+  if (line.startsWith("A")) {
+    return pc.green(line);
+  }
+
+  if (line.startsWith("M")) {
+    return pc.blue(line);
+  }
+
+  if (line.startsWith("D")) {
+    return pc.red(line);
+  }
+
+  return line;
 }
 
 /* -------------------------
-   file formatting
+   commit flow
 ------------------------- */
 
-function formatFile(f) {
-  if (f.status.startsWith("??")) return `+ ${f.file}`;
-  if (f.status.includes("M")) return `~ ${f.file}`;
-  if (f.status.includes("D")) return `- ${f.file}`;
-  return `  ${f.file}`;
-}
-
-/* -------------------------
-   main flow
-------------------------- */
-
-async function main() {
+async function commitFlow() {
   const files = getFiles();
 
-  banner(files.length);
-
   if (!files.length) {
-    console.log("No changes.");
+    console.log(pc.green("Working tree clean."));
     return;
   }
 
+  console.log(pc.dim(`Files detected: ${files.length}`));
+  console.log("");
+
   const selected = await checkbox({
     message: "Select files",
-    choices: files.map(f => ({
-      name: formatFile(f),
-      value: f.file,
+    choices: files.map(line => ({
+      name: formatFile(line),
+      value: line.split(" ").slice(1).join(" "),
       checked: true
     }))
   });
 
   if (!selected.length) {
-    console.log("Nothing selected.");
+    console.log(pc.yellow("Nothing selected."));
     return;
   }
 
-  console.log();
+  run("git reset");
+  console.log(selected)
 
   for (const file of selected) {
+    console.log(pc.dim(`Staging: ${file}`));
     run(`git add "${file}"`);
   }
 
-  console.log("files staged");
-  console.log();
+  console.log("");
+  console.log(pc.green("Running aicommit2..."));
+  console.log("");
 
-  console.log("run aicommit2...");
-  execSync("aicommit2", { stdio: "inherit" });
+  execSync("aicommit2", {
+    stdio: "inherit"
+  });
+}
+
+/* -------------------------
+   main
+------------------------- */
+
+async function main() {
+  banner();
+  await commitFlow();
 }
 
 main().catch(err => {
