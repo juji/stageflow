@@ -9,6 +9,19 @@ function run(cmd) {
 }
 
 /* -------------------------
+   precheck
+------------------------- */
+
+function hasAicommit2() {
+  try {
+    execSync("command -v aicommit2", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* -------------------------
    git
 ------------------------- */
 
@@ -20,7 +33,7 @@ function getFiles() {
 }
 
 function hasConflicts(files) {
-  return files.some(line => 
+  return files.some(line =>
     line.startsWith("U") ||
     line.startsWith("AA") ||
     line.startsWith("AU") ||
@@ -60,6 +73,11 @@ function formatFile(line) {
 ------------------------- */
 
 async function commitFlow() {
+  if (!hasAicommit2()) {
+    console.error(pc.red("ERROR: aicommit2 not found in PATH"));
+    process.exit(1);
+  }
+
   const files = getFiles();
 
   if (hasConflicts(files)) {
@@ -101,9 +119,7 @@ async function commitFlow() {
   console.log(pc.green("Running aicommit2..."));
   console.log("");
 
-  execSync("aicommit2", {
-    stdio: "inherit"
-  });
+  execSync("aicommit2", { stdio: "inherit" });
 }
 
 /* -------------------------
