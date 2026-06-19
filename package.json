@@ -1,0 +1,46 @@
+{
+  "name": "stageflow",
+  "version": "1.0.0",
+  "description": "Interactive file selector for aicommit2 with staged commit workflow",
+  "license": "MIT",
+  "author": "you",
+  "type": "module",
+
+  "bin": {
+    "stageflow": "./index.js"
+  },
+
+  "files": [
+    "index.js"
+  ],
+
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "format": "prettier -w ."
+  },
+
+  "dependencies": {
+    "@inquirer/prompts": "^8.5.2",
+    "picocolors": "^1.1.1"
+  },
+
+  "engines": {
+    "node": ">=18"
+  },
+
+  "keywords": [
+    "git",
+    "cli",
+    "aicommit",
+    "commit",
+    "git-ui",
+    "inquirer",
+    "developer-tools"
+  ],
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourname/stageflow"
+  }
+}
