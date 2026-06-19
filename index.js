@@ -59,6 +59,7 @@ function banner() {
   console.clear();
   console.log("");
   console.log(pc.bold("STAGEFLOW"));
+  console.log(pc.dim("[press ESC to cancel]"));
   console.log("");
 }
 
