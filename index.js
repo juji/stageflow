@@ -108,8 +108,8 @@ async function commitFlow() {
     const action = await select({
       message: "What do you want to do?",
       choices: [
-        { name: "Continue (exclude staged files)", value: "continue_exclude" },
-        { name: "Continue (include staged files)", value: "continue_include" },
+        { name: "Exclude staged files", value: "continue_exclude" },
+        { name: "Include staged files", value: "continue_include" },
         { name: "Reset staging area", value: "reset" }
       ]
     });
