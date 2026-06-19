@@ -155,7 +155,7 @@ async function commitFlow() {
   console.log(pc.green("Running aicommit2..."));
   console.log("");
 
-  execSync("aicommit2", { stdio: "inherit" });
+  execSync(`aicommit2`, { stdio: "inherit" });
 }
 
 /* -------------------------
