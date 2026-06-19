@@ -59,7 +59,7 @@ function banner() {
   console.clear();
   console.log("");
   console.log(pc.bold("STAGEFLOW"));
-  console.log(pc.dim("[press ESC to cancel]"));
+  console.log(pc.dim("[ESC = cancel]"));
   console.log("");
 }
 
@@ -83,13 +83,11 @@ async function commitFlow() {
 
   if (hasConflicts(files)) {
     console.error(pc.red("ERROR: Merge conflict detected (U state)."));
-    console.error(pc.red("Resolve conflicts before continuing."));
     process.exit(1);
   }
 
   if (!files.length) {
     console.log(pc.green("Working tree clean."));
-    process.exit(0);
     return;
   }
 
@@ -97,20 +95,21 @@ async function commitFlow() {
 
   let selectableFiles = files;
 
+  const getPath = (line) => line.split(" ").slice(1).join(" ").trim();
+
   if (staged.length > 0) {
     console.log(pc.yellow("Staged files detected:"));
     console.log("");
 
-    for (const f of staged) {
-      console.log(pc.cyan(`- ${f}`));
-    }
+    staged.forEach(f => console.log(pc.cyan(`- ${f}`)));
 
     console.log("");
 
     const action = await select({
       message: "What do you want to do?",
       choices: [
-        { name: "Continue (exclude staged files)", value: "continue" },
+        { name: "Continue (exclude staged files)", value: "continue_exclude" },
+        { name: "Continue (include staged files)", value: "continue_include" },
         { name: "Reset staging area", value: "reset" }
       ]
     });
@@ -120,13 +119,17 @@ async function commitFlow() {
       console.log(pc.red("Staging area cleared."));
     }
 
-    if (action === "continue") {
+    if (action === "continue_exclude") {
       const stagedSet = new Set(staged);
 
       selectableFiles = files.filter(line => {
-        const file = line.split(" ").slice(1).join(" ").trim();
+        const file = getPath(line);
         return !stagedSet.has(file);
       });
+    }
+
+    if (action === "continue_include") {
+      selectableFiles = files;
     }
   }
 
@@ -137,7 +140,7 @@ async function commitFlow() {
     message: "Select files to stage",
     choices: selectableFiles.map(line => ({
       name: formatFile(line),
-      value: line.split(" ").slice(1).join(" ").trim(),
+      value: getPath(line),
       checked: true
     }))
   });
@@ -156,7 +159,7 @@ async function commitFlow() {
   console.log(pc.green("Running aicommit2..."));
   console.log("");
 
-  execSync(`aicommit2`, { stdio: "inherit" });
+  execSync("aicommit2", { stdio: "inherit" });
 }
 
 /* -------------------------
