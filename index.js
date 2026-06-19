@@ -89,6 +89,7 @@ async function commitFlow() {
 
   if (!files.length) {
     console.log(pc.green("Working tree clean."));
+    process.exit(0);
     return;
   }
 
